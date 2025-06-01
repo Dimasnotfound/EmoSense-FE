@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { fetchSymptoms, fetchCfOptions, submitDiagnosis } from '../services/api';
+import { useNavigate } from 'react-router-dom';
 
 interface Symptom {
   id: string;
-  name: string;
+  question: string;
   expert_cf: number;
 }
 
 interface CfOption {
-  label: string;
+  description: string;
   value: number;
 }
 
@@ -18,6 +19,7 @@ interface Result {
 }
 
 const DiagnosePage: React.FC = () => {
+  const navigate = useNavigate();
   const [step, setStep] = useState<number>(1);
   const [symptoms, setSymptoms] = useState<Symptom[]>([]);
   const [cfOptions, setCfOptions] = useState<CfOption[]>([]);
@@ -35,8 +37,19 @@ const DiagnosePage: React.FC = () => {
           fetchSymptoms(),
           fetchCfOptions(),
         ]);
-        setSymptoms(Object.values(symptomsRes.data));
-        setCfOptions(Object.values(cfOptionsRes.data));
+        setSymptoms(
+          Object.entries(symptomsRes.data).map(([id, symptom]: [string, any]) => ({
+            id,
+            question: symptom.question,
+            expert_cf: symptom.expert_cf,
+          }))
+        );
+        setCfOptions(
+          Object.entries(cfOptionsRes.data).map(([_, option]: [string, any]) => ({
+            description: option.description,
+            value: option.value,
+          }))
+        );
       } catch (err) {
         setError('Gagal mengambil data dari server. Pastikan backend berjalan.');
       }
@@ -44,18 +57,16 @@ const DiagnosePage: React.FC = () => {
     fetchData();
   }, []);
 
-  const handleSelect = (id: string, value: number) => {
+  const handleSelect = (symptomId: string, value: number) => {
     setUserInputs((prev) => {
-      const key = `symptom_${id}`;
-      if (prev[key] === value) {
-        const { [key]: _, ...rest } = prev;
-        return rest;
+      const newInputs = { ...prev };
+      if (newInputs[symptomId] === value) {
+        delete newInputs[symptomId]; // Deselect if the same option is clicked
       } else {
-        return {
-          ...prev,
-          [key]: value,
-        };
+        newInputs[symptomId] = value; // Set the new value for the symptom
       }
+      console.log("Updated userInputs:", newInputs); // Debugging to check payload
+      return newInputs;
     });
   };
 
@@ -63,17 +74,16 @@ const DiagnosePage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const validInputs = Object.fromEntries(
-        Object.entries(userInputs).filter(([key]) => key.startsWith('symptom_'))
-          .map(([key, value]) => [key.replace('symptom_', ''), value])
+      console.log("Submitting payload:", userInputs); // Debugging to check final payload
+      const res = await submitDiagnosis(userInputs);
+      setResults(
+        Object.entries(res.data.results || {}).map(([_, value]: [string, any]) => ({
+          name: value.name,
+          cf: value.cf,
+        }))
       );
-      const res = await submitDiagnosis(validInputs);
-      setResults(Object.entries(res.data.results || {}).map(([_, value]: [string, any]) => ({
-        name: value.name,
-        cf: value.cf / 100,
-      })));
       setDiagnosis(res.data.diagnosis || 'Tidak ada diagnosis yang dominan.');
-      setConfidence(res.data.confidence ? res.data.confidence / 100 : null);
+      setConfidence(res.data.confidence ? res.data.confidence : null);
       setStep(3);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Terjadi kesalahan saat menghubungi server.');
@@ -119,24 +129,34 @@ const DiagnosePage: React.FC = () => {
       case 2:
         return (
           <div className="bg-white p-8 rounded-xl shadow-lg max-w-4xl mx-auto">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">Masukkan Tingkat Keyakinan untuk Setiap Gejala</h2>
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">Tes Kesehatan Emosional Anda</h2>
+            <div className="mb-6 bg-indigo-50 p-4 rounded-lg shadow-inner">
+              <p className="text-gray-800">
+                <strong>Dalam 2 minggu terakhir</strong>, seberapa sering masalah-masalah berikut ini mengganggu Anda?
+              </p>
+              <p className="text-gray-600 mt-2">
+                Tidak semua pertanyaan wajib diisi. Jawab sesuai pengalaman Anda untuk hasil yang lebih akurat.
+              </p>
+            </div>
             <div className="space-y-6">
-              {symptoms.map((symptom) => (
+              {symptoms.map((symptom, index) => (
                 <div key={symptom.id} className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">{symptom.name}</label>
+                  <label className="block text-lg font-medium text-gray-700 mb-2">
+                    {`${index + 1}. ${symptom.question}`}
+                  </label>
                   <div className="flex flex-wrap gap-2">
                     {cfOptions.map((option) => (
                       <button
-                        key={option.value}
+                        key={option.description}
                         type="button"
                         onClick={() => handleSelect(symptom.id, option.value)}
-                        className={`flex-1 min-w-[100px] px-4 py-2 rounded-lg transition duration-200 ${
-                          userInputs[`symptom_${symptom.id}`] === option.value
-                            ? 'bg-indigo-600 text-white'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        className={`min-w-[90px] px-3 py-2 rounded-full transition duration-200 text-sm shadow-sm border ${
+                          userInputs[symptom.id] === option.value
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
                         }`}
                       >
-                        {option.label}
+                        {option.description}
                       </button>
                     ))}
                   </div>
@@ -182,7 +202,7 @@ const DiagnosePage: React.FC = () => {
                     <tr key={result.name}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{result.name}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {(result.cf * 100).toFixed(2)}%
+                        {(result.cf).toFixed(2)}%
                       </td>
                     </tr>
                   ))}
@@ -192,16 +212,16 @@ const DiagnosePage: React.FC = () => {
             {diagnosis && (
               <p className="mt-6 text-lg font-semibold text-gray-800">
                 Diagnosis Akhir: {diagnosis} dengan tingkat keyakinan{' '}
-                {confidence !== null ? (confidence * 100).toFixed(2) : '0'}%
+                {confidence !== null ? (confidence).toFixed(2) : '0'}%
               </p>
             )}
             <div className="text-center mt-6">
               <button
-                onClick={() => goToStep(2)}
-                className="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => navigate('/dashboard')}
+                className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={loading}
               >
-                Kembali
+                Kembali ke Dashboard
               </button>
             </div>
           </div>
@@ -229,9 +249,15 @@ const DiagnosePage: React.FC = () => {
         <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">Diagnosa dengan EmoSense</h1>
         <div className="relative w-full max-w-3xl mx-auto mb-8">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-sm text-gray-600">Informasi Tes</span>
-            <span className="text-sm text-gray-600">Pertanyaan Tes</span>
-            <span className="text-sm text-gray-600">Hasil Anda</span>
+            <span className={`text-sm ${step === 1 ? 'text-indigo-600 font-semibold' : 'text-gray-600'}`}>
+              Informasi Tes
+            </span>
+            <span className={`text-sm ${step === 2 ? 'text-indigo-600 font-semibold' : 'text-gray-600'}`}>
+              Pertanyaan Tes
+            </span>
+            <span className={`text-sm ${step === 3 ? 'text-indigo-600 font-semibold' : 'text-gray-600'}`}>
+              Hasil Anda
+            </span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2.5">
             <div
@@ -243,7 +269,7 @@ const DiagnosePage: React.FC = () => {
             {[1, 2, 3].map((s) => (
               <div
                 key={s}
-                className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shadow-md ${
                   step >= s ? 'bg-indigo-600 text-white' : 'bg-gray-300 text-gray-600'
                 }`}
               >
