@@ -18,19 +18,19 @@ Frontend ini menampilkan:
 ## 📸 Tangkapan Layar
 Berikut adalah beberapa tangkapan layar dari antarmuka EmoSense:
 
-### Halaman Informasi Tes
-![Halaman Informasi Tes](path/to/info-page-screenshot.png)
 
-### Halaman Pertanyaan Diagnosis
-![Halaman Pertanyaan Diagnosis](path/to/questions-page-screenshot.png)
+### Halaman Awal(Home)
+![Screenshot_8.png](https://raw.githubusercontent.com/Dimasnotfound/EmoSense-FE/main/images/Screenshot_8.png)
 
-### Halaman Hasil Diagnosis
-![Halaman Hasil Diagnosis](path/to/results-page-screenshot.png)
+### Halaman Diagnosa
+![Screenshot_10.png](https://raw.githubusercontent.com/Dimasnotfound/EmoSense-FE/main/images/Screenshot_10.png)
+
+### Halaman Hasil Diagnosa
+![Screenshot_11.png](https://raw.githubusercontent.com/Dimasnotfound/EmoSense-FE/main/images/Screenshot_11.png)
 
 ### Dashboard Riwayat Diagnosis
-![Dashboard Riwayat Diagnosis](path/to/dashboard-screenshot.png)
+![Screenshot_12.png](https://raw.githubusercontent.com/Dimasnotfound/EmoSense-FE/main/images/Screenshot_12.png)
 
-**Catatan untuk Menambahkan Gambar**: Ganti `path/to/[nama-gambar].png` dengan path sebenarnya ke file gambar Anda (misalnya, `screenshots/info-page.png`). Pastikan file gambar sudah ada di repositori sebelum menautkannya.
 
 ## 🛠️ Teknologi yang Digunakan
 - **Frontend**: React, TypeScript, Tailwind CSS
